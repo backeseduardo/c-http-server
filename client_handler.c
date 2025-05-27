@@ -9,6 +9,38 @@
 
 #define BUFFER_SIZE 1024
 
+const int VERB_GET = 1;
+const int VERB_POST = 2;
+const int VERB_ERROR_UNKNOWN = -1;
+const int VERB_ERROR_INVALID_REQUEST = -2;
+const int VERB_ERROR_TOO_LONG = -3;
+
+int extract_verb(const char *request) {
+  const char *end = strchr(request, ' ');
+  if (!end) {
+    perror("invalid request");
+    return VERB_ERROR_INVALID_REQUEST;
+  }
+
+  int len = end - request;
+  char verb[10];
+  if (len > sizeof(verb)) {
+    return VERB_ERROR_TOO_LONG;
+  }
+
+  strncpy(verb, request, len);
+  verb[len] = '\0';
+
+  if (strcmp(verb, "GET") == 0) {
+    return VERB_GET;
+  }
+  if (strcmp(verb, "POST") == 0) {
+    return VERB_POST;
+  }
+
+  return VERB_ERROR_UNKNOWN;
+}
+
 void *handle_client(void *arg) {
   int client_fd = *((int *)arg);
   char *buffer = (char *)malloc(BUFFER_SIZE * sizeof(char));
@@ -22,10 +54,29 @@ void *handle_client(void *arg) {
   printf("Message received\n");
   printf("%s\n", buffer);
 
-  char *response = "HTTP/1.1 200 OK\r\n"
-                   "Content-Type: text/html\r\n"
-                   "\r\n"
-                   "Hello from server";
+  int verb;
+  if ((verb = extract_verb(buffer)) < 0) {
+    perror("extract verb failed");
+    exit(EXIT_FAILURE);
+  }
+  if (verb == VERB_GET) {
+    printf("It is a GET\n");
+  } else if (verb == VERB_POST) {
+    printf("It is a POST\n");
+  }
+
+  char response[BUFFER_SIZE];
+  time_t seconds = time(NULL);
+  sprintf(response,
+          "HTTP/1.1 200 OK\r\n"
+          "Content-Type: text/html\r\n"
+          "\r\n"
+          "<!DOCTYPE html>"
+          "<html lang=\"en\">"
+          "<head><title>test</title></head>"
+          "<body><h1>%s</h1><h2>%ld</h2></body>"
+          "</html>",
+          "Hello", seconds);
   send(client_fd, response, strlen(response), 0);
 
   free(buffer);
