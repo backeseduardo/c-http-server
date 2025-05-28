@@ -59,13 +59,22 @@ void *handle_client(void *arg) {
     perror("extract verb failed");
     exit(EXIT_FAILURE);
   }
+  free(buffer);
+
+  char response[BUFFER_SIZE];
   if (verb == VERB_GET) {
     printf("It is a GET\n");
+    sprintf(response, "HTTP/1.1 404 Not Found\r\n"
+                      "Content-Type: text/plain\r\n"
+                      "\r\n"
+                      "404 Not Found");
+    send(client_fd, response, strlen(response), 0);
+    close(client_fd);
+    return NULL;
   } else if (verb == VERB_POST) {
     printf("It is a POST\n");
   }
 
-  char response[BUFFER_SIZE];
   time_t seconds = time(NULL);
   sprintf(response,
           "HTTP/1.1 200 OK\r\n"
@@ -78,9 +87,6 @@ void *handle_client(void *arg) {
           "</html>",
           "Hello", seconds);
   send(client_fd, response, strlen(response), 0);
-
-  free(buffer);
   close(client_fd);
-
   return NULL;
 }
